@@ -61,7 +61,7 @@ namespace ComPortsApp
                         Form1.richText.Invoke(() =>
                         {
                             Form1.richText.SelectionColor = Color.Black;
-                            Form1.richText.AppendText("\r\nGetting data with size: " + (buffer[i + 1] - 'a') + "\r\n")
+                            Form1.richText.AppendText("\r\nGetting data with size: " + (buffer[i + 1] - 'a') + "\r\n");
                         });
                         i += 3;
                         continue;
