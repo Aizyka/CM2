@@ -15,7 +15,7 @@ namespace ComPortsApp
     /// </summary>
     public static class COBS
     {
-        public static IEnumerable<byte> Encode(IEnumerable<byte> Input)
+        public static IEnumerable<byte> Encode(IEnumerable<byte> Input, byte frameDelim)
         {
             if (Input == null)
                 return null;
@@ -30,7 +30,7 @@ namespace ComPortsApp
             foreach (var i in Input)
             {
                 // If we encounter a zero (the frame delimiter)
-                if (i == 0)
+                if (i == frameDelim)
                 {
                     // Write the value of the distance to the next zero back in output where we last saw a zero
                     result.Insert(distanceIndex, distance);
@@ -73,7 +73,7 @@ namespace ComPortsApp
             return result;
         }
 
-        public static IEnumerable<byte> Decode(IEnumerable<byte> Input)
+        public static IEnumerable<byte> Decode(IEnumerable<byte> Input, byte frameDelim)
         {
             if (Input == null)
                 return null;
@@ -111,7 +111,7 @@ namespace ComPortsApp
 
                 // Add the original zero back
                 if (distance < 0xFF && distanceIndex < input.Length)
-                    result.Add(0);
+                    result.Add(frameDelim);
             }
 
             return result;

@@ -31,6 +31,9 @@
             textBox1 = new TextBox();
             label1 = new Label();
             richTextBox1 = new RichTextBox();
+            comboBox1 = new ComboBox();
+            comboBox2 = new ComboBox();
+            comboBox3 = new ComboBox();
             SuspendLayout();
             // 
             // textBox1
@@ -38,7 +41,7 @@
             textBox1.Location = new Point(17, 20);
             textBox1.Margin = new Padding(4, 5, 4, 5);
             textBox1.Name = "textBox1";
-            textBox1.Size = new Size(598, 31);
+            textBox1.Size = new Size(1113, 31);
             textBox1.TabIndex = 0;
             textBox1.KeyDown += textBox1_KeyDown;
             // 
@@ -55,18 +58,48 @@
             // 
             // richTextBox1
             // 
-            richTextBox1.Location = new Point(676, 20);
+            richTextBox1.Location = new Point(17, 150);
             richTextBox1.Name = "richTextBox1";
             richTextBox1.ReadOnly = true;
-            richTextBox1.Size = new Size(455, 718);
+            richTextBox1.Size = new Size(1114, 446);
             richTextBox1.TabIndex = 5;
             richTextBox1.Text = "";
+            // 
+            // comboBox1
+            // 
+            comboBox1.FormattingEnabled = true;
+            comboBox1.Location = new Point(393, 92);
+            comboBox1.Name = "comboBox1";
+            comboBox1.Size = new Size(182, 33);
+            comboBox1.TabIndex = 6;
+            comboBox1.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
+            // 
+            // comboBox2
+            // 
+            comboBox2.FormattingEnabled = true;
+            comboBox2.Location = new Point(205, 92);
+            comboBox2.Name = "comboBox2";
+            comboBox2.Size = new Size(182, 33);
+            comboBox2.TabIndex = 7;
+            comboBox2.SelectedIndexChanged += comboBox2_SelectedIndexChanged;
+            // 
+            // comboBox3
+            // 
+            comboBox3.FormattingEnabled = true;
+            comboBox3.Location = new Point(17, 92);
+            comboBox3.Name = "comboBox3";
+            comboBox3.Size = new Size(182, 33);
+            comboBox3.TabIndex = 8;
+            comboBox3.SelectedIndexChanged += comboBox3_SelectedIndexChanged;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1143, 750);
+            Controls.Add(comboBox3);
+            Controls.Add(comboBox2);
+            Controls.Add(comboBox1);
             Controls.Add(richTextBox1);
             Controls.Add(label1);
             Controls.Add(textBox1);
@@ -83,5 +116,8 @@
         private TextBox textBox1;
         private Label label1;
         private RichTextBox richTextBox1;
+        private ComboBox comboBox1;
+        private ComboBox comboBox2;
+        private ComboBox comboBox3;
     }
 }
