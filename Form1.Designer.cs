@@ -34,6 +34,10 @@
             comboBox1 = new ComboBox();
             comboBox2 = new ComboBox();
             comboBox3 = new ComboBox();
+            comboBox4 = new ComboBox();
+            label2 = new Label();
+            checkBox1 = new CheckBox();
+            checkBox2 = new CheckBox();
             SuspendLayout();
             // 
             // textBox1
@@ -92,11 +96,53 @@
             comboBox3.TabIndex = 8;
             comboBox3.SelectedIndexChanged += comboBox3_SelectedIndexChanged;
             // 
+            // comboBox4
+            // 
+            comboBox4.FormattingEnabled = true;
+            comboBox4.Location = new Point(949, 92);
+            comboBox4.Name = "comboBox4";
+            comboBox4.Size = new Size(182, 33);
+            comboBox4.TabIndex = 9;
+            comboBox4.SelectedIndexChanged += comboBox4_SelectedIndexChanged;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(1018, 64);
+            label2.Name = "label2";
+            label2.Size = new Size(112, 25);
+            label2.TabIndex = 10;
+            label2.Text = "Dest. Station";
+            // 
+            // checkBox1
+            // 
+            checkBox1.AutoSize = true;
+            checkBox1.Location = new Point(594, 94);
+            checkBox1.Name = "checkBox1";
+            checkBox1.Size = new Size(137, 29);
+            checkBox1.TabIndex = 11;
+            checkBox1.Text = "High Priority";
+            checkBox1.UseVisualStyleBackColor = true;
+            // 
+            // checkBox2
+            // 
+            checkBox2.AutoSize = true;
+            checkBox2.Location = new Point(737, 94);
+            checkBox2.Name = "checkBox2";
+            checkBox2.Size = new Size(102, 29);
+            checkBox2.TabIndex = 12;
+            checkBox2.Text = "Monitor";
+            checkBox2.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1143, 750);
+            Controls.Add(checkBox2);
+            Controls.Add(checkBox1);
+            Controls.Add(label2);
+            Controls.Add(comboBox4);
             Controls.Add(comboBox3);
             Controls.Add(comboBox2);
             Controls.Add(comboBox1);
@@ -119,5 +165,9 @@
         private ComboBox comboBox1;
         private ComboBox comboBox2;
         private ComboBox comboBox3;
+        private ComboBox comboBox4;
+        private Label label2;
+        private CheckBox checkBox1;
+        private CheckBox checkBox2;
     }
 }

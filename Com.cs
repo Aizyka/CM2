@@ -1,6 +1,9 @@
 ﻿using System.Text;
 using System.IO.Ports;
 using System.Windows.Forms;
+using System;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Reflection;
 namespace ComPortsApp
 {
     class Package
@@ -8,6 +11,7 @@ namespace ComPortsApp
         public byte[] originalData;
         public int curr;
         public byte fcs;
+
 
         public Package(int packageSize)
         {
@@ -28,12 +32,17 @@ namespace ComPortsApp
         private SerialPort receivePort;
         private int sentBytesCount = 0;
         private Package currentPackage;
+        private int destinationStation = 0;
+        private int sourceStation = 0;
+        private Form1 form1;
 
         private Random random = new Random();
 
 
-        public Com()
+        public Com(int sourceStation, Form1 form)
         {
+            form1 = form;
+            this.sourceStation = sourceStation;
             specialSymbol = (byte)('a' + (byte)PackageSize);
             flag = new byte[2] { (byte)'$', specialSymbol };
             string[] ports = GetPorts();
@@ -44,21 +53,77 @@ namespace ComPortsApp
 
         private void ComPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            byte[] buffer = new byte[PackageSize + 6];
+            byte[] tokenBuffer = new byte[4];
+            int tokenCount = receivePort.Read(tokenBuffer, 0, 4);
+            if (tokenBuffer[3] == '0')
+            {
+                if(form1.Monitor())
+                {
+                    form1.Log("Got Empty token");
+                }
+                return;
+            }
+
+            byte[] buffer = new byte[PackageSize + 7];
             int count = receivePort.Read(buffer, 0, buffer.Length);
             if (count != buffer.Length)
                 return;
-            currentPackage = new Package(PackageSize + 6);
-            for(int i = 4; i < buffer.Length - 1; i++)
+            currentPackage = new Package(PackageSize + 7);
+            for(int i = 4; i < buffer.Length - 2; i++)
             {
                 if (buffer[i] == 0x00)
                     break;
                 currentPackage.originalData[currentPackage.curr] = buffer[i];
                 currentPackage.curr++;
             }
-            currentPackage.fcs = buffer[buffer.Length - 1];
-            GetResult(currentPackage);
+            currentPackage.fcs = buffer[buffer.Length - 2];
+            
+            if(buffer[buffer.Length - 1] != (byte)(sourceStation + 48))
+            {
+                Resend(currentPackage, buffer[buffer.Length - 1]);
+                if(form1.Monitor())
+                {
+                    form1.Log("Got data and resending to next station");
+                }
+            }
+            else
+            {
+                GetResult(currentPackage);
+                string token = "0000";
+                if (form1.HighPriority())
+                {
+                    token = token.Remove(sourceStation - 1, 1).Insert(sourceStation - 1, "1");
+                }
+                byte[] tokenData = Encoding.ASCII.GetBytes(token);
+                sendPort.Write(tokenData, 0, 4);
+            }
             currentPackage = null;
+        }
+
+        private void Resend(Package package, byte destination)
+        {
+            byte[] buffer = new byte[PackageSize + 7]; // 5 header + 1 COBS header + 1 destination station
+            Buffer.BlockCopy(flag, 0, buffer, 0, 2);
+            buffer[2] = destAddress;
+            buffer[3] = byte.Parse(sendPort.PortName.Substring(3));
+            Buffer.BlockCopy(package.originalData, 0, buffer, 4, package.curr);
+            for (int j = 4 + package.originalData.Length; j < PackageSize + 5; j++)
+            {
+                buffer[j] = 0x00;
+            }
+            buffer[buffer.Length - 2] = package.fcs;
+            buffer[buffer.Length - 1] = destination;
+
+            string token = "0001";
+            if (form1.HighPriority())
+            {
+                token = token.Remove(sourceStation - 1, 1).Insert(sourceStation - 1, "1");
+            }
+            byte[] tokenData = Encoding.ASCII.GetBytes(token);
+            sendPort.Write(tokenData, 0, 4);
+
+            sendPort.Write(buffer, 0, buffer.Length);
+            sentBytesCount += buffer.Length;
         }
 
         private void GetResult(Package package)
@@ -67,63 +132,57 @@ namespace ComPortsApp
             
             byte[] encoded = package.originalData.Take(packageLength).ToArray();
 
-            Form1.richText.Invoke(() =>
+            form1.Invoke(() =>
             {
-                Form1.richText.SelectionColor = Color.Black;
-                Form1.richText.AppendText("\r\nGot package:\r\nOriginal Data:\r\n");
+                form1.Log("Got Package:");
+                form1.Log("Original Data:");
                 for (int i = 0; i < encoded.Length; i++)
                 {
-                    Form1.richText.AppendText("0x" + encoded[i].ToString("X2") + " ");
+                    form1.Log2("0x" + encoded[i].ToString("X2") + " ");
                 }
+                form1.Log("");
                 byte actualFcs = FCS.CreateFcs(encoded);
                 if (package.fcs != actualFcs)
                 {
-                    Form1.richText.Invoke(() =>
-                    {
-                        Form1.richText.SelectionColor = Color.Red;
-                        Form1.richText.AppendText("\r\nFCS mismatch!\r\n");
-                        Form1.richText.SelectionColor = Color.Black;
-                    });
-                    byte[] fixedData = FCS.CheckAndCorrectHamming(encoded, package.fcs);
+                    form1.Log("FCS mismatch!", Color.Red);
+                    byte[] fixedData = FCS.CheckAndCorrectHamming(encoded, package.fcs, form1);
                     Array.Copy(fixedData, encoded, encoded.Length);
-                    Form1.richText.AppendText("\r\nFixed Data:\r\n");
+                    form1.Log("Fixed Data:");
                     for (int i = 0; i < encoded.Length; i++)
                     {
-                        Form1.richText.AppendText("0x" + encoded[i].ToString("X2") + " ");
+                        form1.Log2("0x" + encoded[i].ToString("X2") + " ");
                     }
+                    form1.Log("");
                 }
 
                 byte[] decoded = COBS.Decode(encoded, specialSymbol).ToArray();
 
-                Form1.richText.AppendText("\r\nEncoded Data:\r\n");
-                Form1.richText.SelectionColor = Color.Green;
-                Form1.richText.AppendText("0x" + encoded[0].ToString("X2") + " ");
+                form1.Log("Encoded Data:");
+                form1.Log2("0x" + encoded[0].ToString("X2") + " ", Color.Green);
 
                 for (int i = 1; i < encoded.Length; i++)
                 {
                     if (encoded[i] != decoded[i - 1])
                     {
-                        Form1.richText.SelectionColor = Color.Red;
+                        form1.Log2("0x" + encoded[i].ToString("X2") + " ", Color.Red);
                     }
                     else
                     {
-                        Form1.richText.SelectionColor = Color.Black;
-                    }
-                    Form1.richText.AppendText("0x" + encoded[i].ToString("X2") + " ");
+                        form1.Log2("0x" + encoded[i].ToString("X2") + " ");
+                    }   
                 }
-                Form1.richText.SelectionColor = Color.Black;
-                Form1.richText.AppendText("\r\nDecoded Data:\r\n");
+                form1.Log("");
+                form1.Log("Decoded Data:");
                 for (int i = 0; i < decoded.Length; i++)
                 {
                     if (decoded[i] != encoded[i + 1])
                     {
-                        Form1.richText.SelectionColor = Color.Red;
+                        form1.Log2("0x" + decoded[i].ToString("X2") + " ", Color.Red);
                     }
                     else
                     {
-                        Form1.richText.SelectionColor = Color.Black;
+                        form1.Log2("0x" + decoded[i].ToString("X2") + " ");
                     }
-                    Form1.richText.AppendText("0x" + decoded[i].ToString("X2") + " ");
                 }
             });
         }
@@ -168,7 +227,9 @@ namespace ComPortsApp
         {
             if (sendPort == null)
                 return;
-            Form1.richText.Clear();
+            if (destinationStation == 0)
+                return;
+            form1.Clear();
             byte[] hex;
             if(data.StartsWith("h"))
             {
@@ -188,21 +249,15 @@ namespace ComPortsApp
                 int rand = random.Next(0, 100);
                 if (rand <= 60 && encoded.Length > 1)
                 {
-                    Form1.richText.Invoke(() =>
-                    {
-                        Form1.richText.AppendText("\r\nSimulating one error\r\n");
-                    });
+                    form1.Log("Simulating one error", Color.Purple);
                     encoded = SimulateErrors(encoded, new int[] { 15 });
                 }
                 else if (rand > 60 && rand < 85 && data.Length > 4)
                 {
-                    Form1.richText.Invoke(() =>
-                    {
-                        Form1.richText.AppendText("\r\nSimulating two errors\r\n");
-                    });
+                    form1.Log("Simulating two errors", Color.Purple);
                     encoded = SimulateErrors(encoded, new int[] { 15, 30 });
                 }
-                byte[] buffer = new byte[PackageSize + 6]; // 5 header + 1 COBS header
+                byte[] buffer = new byte[PackageSize + 7]; // 5 header + 1 COBS header + 1 destination station
                 Buffer.BlockCopy(flag, 0, buffer, 0, 2);
                 buffer[2] = destAddress;
                 buffer[3] = byte.Parse(sendPort.PortName.Substring(3));
@@ -211,7 +266,17 @@ namespace ComPortsApp
                 {
                     buffer[j] = 0x00;
                 }
-                buffer[buffer.Length - 1] = fcs;
+                buffer[buffer.Length - 2] = fcs;
+                buffer[buffer.Length - 1] = (byte)(destinationStation + 48);
+
+
+                string token = "0001";
+                if(form1.HighPriority())
+                {
+                    token = token.Remove(sourceStation - 1, 1).Insert(sourceStation - 1, "1");
+                }
+                byte[] tokenData = Encoding.ASCII.GetBytes(token);
+                sendPort.Write(tokenData, 0, 4);
 
                 sendPort.Write(buffer, 0, buffer.Length);
                 sentBytesCount += buffer.Length;
@@ -254,6 +319,11 @@ namespace ComPortsApp
             Parity parity = (Parity)Enum.Parse(typeof(Parity), selectedParity);
             receivePort.Parity = parity;
             sendPort.Parity = parity;
+        }
+
+        public void changeStation(int station)
+        {
+            destinationStation = station;
         }
 
         public string getParity()

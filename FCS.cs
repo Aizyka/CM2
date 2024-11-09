@@ -53,7 +53,7 @@
             return Convert.ToByte(new string(fcs), 2);
         }
 
-        public static byte[] CheckAndCorrectHamming(byte[] data, byte fcs1)
+        public static byte[] CheckAndCorrectHamming(byte[] data, byte fcs1, Form1 form1)
         {
             int dataSize = data.Length * 8;
             int actualFcsSize = Math.Min(CalculateFcsSize(dataSize), 8);
@@ -89,22 +89,12 @@
 
             if (syndrome == 0 && calculatedOverallParity == overallParity)
             {
-                Form1.richText.Invoke(() =>
-                {
-                    Form1.richText.SelectionColor = Color.Green;
-                    Form1.richText.AppendText("\r\nNo errors found.\r\n");
-                    Form1.richText.SelectionColor = Color.Black;
-                });
+                form1.Log("No Errors found", Color.Green);
                 return data;
             }
             else if (syndrome != 0 && calculatedOverallParity != overallParity)
             {
-                Form1.richText.Invoke(() =>
-                {
-                    Form1.richText.SelectionColor = Color.Red;
-                    Form1.richText.AppendText("\r\nSingle error detected and fixed.\r\n");
-                    Form1.richText.SelectionColor = Color.Black;
-                });
+                form1.Log("Single error detected and fixed", Color.Green);
                 int errorPos = syndrome - 1;
                 char[] correctedBits = dataBits.ToCharArray();
                 correctedBits[errorPos] = correctedBits[errorPos] == '0' ? '1' : '0';
@@ -114,12 +104,7 @@
             }
             else
             {
-                Form1.richText.Invoke(() =>
-                {
-                    Form1.richText.SelectionColor = Color.Red;
-                    Form1.richText.AppendText("\r\nA double error was detected. Correction is not possible.\r\n");
-                    Form1.richText.SelectionColor = Color.Black;
-                });
+                form1.Log("A double error was detected. Correction is not possible", Color.Red);
                 return data;
             }
         }
