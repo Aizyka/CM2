@@ -1,3 +1,4 @@
+using Microsoft.VisualBasic.Logging;
 using System.IO.Ports;
 using System.Security.Cryptography;
 using System.Security.Policy;
@@ -8,7 +9,7 @@ namespace ComPortsApp
     {
         private Com communication;
         string[] ports = Com.GetPorts();
-        public static RichTextBox richText;
+        private static RichTextBox richText;
         public Form1()
         {
             InitializeComponent();
@@ -73,6 +74,44 @@ namespace ComPortsApp
             string selectedParity = comboBox1.SelectedItem.ToString();
             if (selectedParity != null)
                 communication.changeParity(selectedParity);
+        }
+
+        public static void Clear()
+        {
+            richText.Clear();
+        }
+
+        public static void Invoke(Delegate method)
+        {
+            richText.Invoke(method);
+        }
+
+        public static void Log2(string msg)
+        {
+            Log2(msg, Color.Black);
+        }
+
+        public static void Log2(string msg, Color color)
+        {
+            richText.Invoke(() =>
+            {
+                richText.SelectionColor = color;
+                richText.AppendText($"{msg}");
+            });
+        }
+
+        public static void Log(string msg)
+        {
+            Log(msg, Color.Black);
+        }
+
+        public static void Log(string msg, Color color)
+        {
+            richText.Invoke(() =>
+            {
+                richText.SelectionColor = color;
+                richText.AppendText($"{msg}\r\n");
+            });
         }
     }
 }

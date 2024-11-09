@@ -67,63 +67,56 @@ namespace ComPortsApp
             
             byte[] encoded = package.originalData.Take(packageLength).ToArray();
 
-            Form1.richText.Invoke(() =>
+            Form1.Invoke(() =>
             {
-                Form1.richText.SelectionColor = Color.Black;
-                Form1.richText.AppendText("\r\nGot package:\r\nOriginal Data:\r\n");
+                Form1.Log("Got Package:");
+                Form1.Log("Original Data:");
                 for (int i = 0; i < encoded.Length; i++)
                 {
-                    Form1.richText.AppendText("0x" + encoded[i].ToString("X2") + " ");
+                    Form1.Log2("0x" + encoded[i].ToString("X2") + " ");
                 }
+                Form1.Log("");
                 byte actualFcs = FCS.CreateFcs(encoded);
                 if (package.fcs != actualFcs)
                 {
-                    Form1.richText.Invoke(() =>
-                    {
-                        Form1.richText.SelectionColor = Color.Red;
-                        Form1.richText.AppendText("\r\nFCS mismatch!\r\n");
-                        Form1.richText.SelectionColor = Color.Black;
-                    });
+                    Form1.Log("FCS mismatch!", Color.Red);
                     byte[] fixedData = FCS.CheckAndCorrectHamming(encoded, package.fcs);
                     Array.Copy(fixedData, encoded, encoded.Length);
-                    Form1.richText.AppendText("\r\nFixed Data:\r\n");
+                    Form1.Log("Fixed Data:");
                     for (int i = 0; i < encoded.Length; i++)
                     {
-                        Form1.richText.AppendText("0x" + encoded[i].ToString("X2") + " ");
+                        Form1.Log2("0x" + encoded[i].ToString("X2") + " ");
                     }
+                    Form1.Log("");
                 }
 
                 byte[] decoded = COBS.Decode(encoded, specialSymbol).ToArray();
 
-                Form1.richText.AppendText("\r\nEncoded Data:\r\n");
-                Form1.richText.SelectionColor = Color.Green;
-                Form1.richText.AppendText("0x" + encoded[0].ToString("X2") + " ");
+                Form1.Log("Encoded Data:");
+                Form1.Log2("0x" + encoded[0].ToString("X2") + " ", Color.Green);
 
                 for (int i = 1; i < encoded.Length; i++)
                 {
                     if (encoded[i] != decoded[i - 1])
                     {
-                        Form1.richText.SelectionColor = Color.Red;
+                        Form1.Log2("0x" + encoded[i].ToString("X2") + " ", Color.Red);
                     }
                     else
                     {
-                        Form1.richText.SelectionColor = Color.Black;
-                    }
-                    Form1.richText.AppendText("0x" + encoded[i].ToString("X2") + " ");
+                        Form1.Log2("0x" + encoded[i].ToString("X2") + " ");
+                    }   
                 }
-                Form1.richText.SelectionColor = Color.Black;
-                Form1.richText.AppendText("\r\nDecoded Data:\r\n");
+                Form1.Log("Decoded Data:");
                 for (int i = 0; i < decoded.Length; i++)
                 {
                     if (decoded[i] != encoded[i + 1])
                     {
-                        Form1.richText.SelectionColor = Color.Red;
+                        Form1.Log2("0x" + decoded[i].ToString("X2") + " ", Color.Red);
                     }
                     else
                     {
-                        Form1.richText.SelectionColor = Color.Black;
+                        Form1.Log2("0x" + decoded[i].ToString("X2") + " ");
                     }
-                    Form1.richText.AppendText("0x" + decoded[i].ToString("X2") + " ");
                 }
             });
         }
@@ -168,7 +161,7 @@ namespace ComPortsApp
         {
             if (sendPort == null)
                 return;
-            Form1.richText.Clear();
+            Form1.Clear();
             byte[] hex;
             if(data.StartsWith("h"))
             {
@@ -188,18 +181,12 @@ namespace ComPortsApp
                 int rand = random.Next(0, 100);
                 if (rand <= 60 && encoded.Length > 1)
                 {
-                    Form1.richText.Invoke(() =>
-                    {
-                        Form1.richText.AppendText("\r\nSimulating one error\r\n");
-                    });
+                    Form1.Log("Simulating one error", Color.Purple);
                     encoded = SimulateErrors(encoded, new int[] { 15 });
                 }
                 else if (rand > 60 && rand < 85 && data.Length > 4)
                 {
-                    Form1.richText.Invoke(() =>
-                    {
-                        Form1.richText.AppendText("\r\nSimulating two errors\r\n");
-                    });
+                    Form1.Log("Simulating two errors", Color.Purple);
                     encoded = SimulateErrors(encoded, new int[] { 15, 30 });
                 }
                 byte[] buffer = new byte[PackageSize + 6]; // 5 header + 1 COBS header
@@ -212,6 +199,21 @@ namespace ComPortsApp
                     buffer[j] = 0x00;
                 }
                 buffer[buffer.Length - 1] = fcs;
+                while(ListenChannel())
+                {
+                    Form1.Log("Channel is busy, waiting", Color.Pink);
+                    Thread.Sleep(CalculateRandomDelay());
+                }
+                foreach(var b in buffer)
+                {
+                    while(EmulateCollision())
+                    {
+                        Form1.Log("Colision detected, retrying", Color.Red);
+                        Thread.Sleep(CalculateRandomDelay());
+                    }
+                    sendPort.Write(new byte[] { b }, 0, 1);
+                    Form1.Log($"Send byte - {b}");
+                }
 
                 sendPort.Write(buffer, 0, buffer.Length);
                 sentBytesCount += buffer.Length;
@@ -229,6 +231,15 @@ namespace ComPortsApp
                 }
             }
             return Enumerable.Range(0, dataBits.Length / 8).Select(i => Convert.ToByte(new string(dataBits, i * 8, 8), 2)).ToArray();
+        }
+
+        bool ListenChannel() => random.NextSingle() < 0.5f;
+        bool EmulateCollision() => random.NextSingle() < 0.3f;
+        int CalculateRandomDelay()
+        {
+            int k = random.Next(0, 10);
+            int r = random.Next(0, (int)Math.Pow(2, k) - 1);
+            return r;
         }
 
         public int returnBaudRate => comPorts[0].BaudRate;
